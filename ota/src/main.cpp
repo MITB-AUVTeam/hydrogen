@@ -1,18 +1,21 @@
 #include <Arduino.h>
-
-// put function declarations here:
-int myFunction(int, int);
+#include <ArduinoOTA.h>
+#include <WiFi.h>
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  WiFi.begin("Katam raju", "123321123");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+  ArduinoOTA.begin();
+  pinMode(2, OUTPUT);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
+  ArduinoOTA.handle();
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  digitalWrite(2, HIGH);
+  delay(1000);
+  digitalWrite(2, LOW);
+  delay(1000);
 }
