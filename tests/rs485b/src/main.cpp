@@ -1,18 +1,23 @@
 #include <Arduino.h>
+#include <HardwareSerial.h>
 
-// put function declarations here:
-int myFunction(int, int);
+#define TXD2 17
+#define RXD2 16
+#define DE_RE 4  // GPIO controlling DE & RE
+
+HardwareSerial RS485Serial(2);
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  pinMode(DE_RE, OUTPUT);
+  digitalWrite(DE_RE, LOW); // Always receive
+  RS485Serial.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  Serial.begin(115200);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  if (RS485Serial.available() >= sizeof(int)) {
+    int receivedNumber = 0;
+    RS485Serial.readBytes((char*)&receivedNumber, sizeof(receivedNumber));
+    Serial.println("Received: " + String(receivedNumber));
+  }
 }
