@@ -3,7 +3,7 @@
 
 #define TXD2 17
 #define RXD2 16
-#define DE_RE 4  // GPIO controlling DE & RE
+#define DE_RE 4
 
 HardwareSerial RS485Serial(2);
 
