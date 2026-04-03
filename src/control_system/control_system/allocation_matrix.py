@@ -11,18 +11,18 @@ class ThrusterMixer(Node):
         super().__init__('thruster_mixer')
 
         # Geometry (meters)
-        W = 0.35
+        W = 0.275
         Lf = 0.30
-        Lr = 0.30
+        Lr = 0.375
 
         # Build full 6x5 configuration matrix B
         self.B = np.array([
-            [-1,   -1,   0,    0,    0],     # Fx
+            [1,   1,   0,    0,    0],     # Fx
             [0,   0,   0,    0,    0],     # Fy (no sway authority)
-            [0,   0,  -1,   -1,   -1],     # Fz
+            [0,   0,  -20,   -20,   -20],     # Fz
             [0,   0,   W,   -W,    0],     # τx (roll)
             [0,   0,   Lf,   Lf,  -Lr],    # τy (pitch)
-            [-W,  W,   0,    0,    0],     # τz (yaw)
+            [W,  -W,   0,    0,    0],     # τz (yaw)
         ], dtype=float)
 
         # Precompute pseudoinverse
