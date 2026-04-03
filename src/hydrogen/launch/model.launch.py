@@ -20,6 +20,7 @@ def generate_launch_description():
     
     worlds_path = os.path.join(pkg_share, 'worlds')
     model_path = os.path.join(pkg_share, 'model')
+    rviz_config_path = os.path.join(pkg_share, 'parameters','config.rviz')
 
     install_dir = os.path.dirname(pkg_share)
 
@@ -120,6 +121,14 @@ def generate_launch_description():
     	name='allocation_matrix',
     	output='screen',
     )    
+    rviz2 = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config_path],
+        parameters=[{'use_sim_time': True}]
+    )
 
     # ---------------- Launch Description ----------------
     ld = LaunchDescription()
@@ -138,7 +147,7 @@ def generate_launch_description():
     ld.add_action(spawn_robot)
     ld.add_action(ros_gz_bridge)
     ld.add_action(thruster_allocator)
-    
+    ld.add_action(rviz2)
 
     return ld
 

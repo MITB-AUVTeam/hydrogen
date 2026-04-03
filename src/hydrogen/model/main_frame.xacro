@@ -8,7 +8,7 @@
     <link name="hydrogen_frame">
       <inertial>
         <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
-        <mass value="45.0"/>
+        <mass value="112.0"/>
         <inertia
           ixx="0.2276"
           ixy="-0.004544"
@@ -19,7 +19,7 @@
       </inertial>
 
       <visual>
-      <origin xyz="0.008 0.0 0.0" rpy="0 0 1.57"/>
+        <origin xyz="0.008 0.0 0.0" rpy="0 0 1.57"/>
         <geometry>
           <mesh
             filename="file://$(find hydrogen)/meshes/auv.stl"
@@ -30,15 +30,15 @@
         </material>
       </visual>
 
+      <!-- FIXED: height 0.3 -> 0.37 for sufficient buoyancy at 112 kg -->
       <collision name="hydrogen_frame_collision">
         <origin xyz="-0.00013 0.0 0.15" rpy="0 0 0"/>
         <geometry>
-          <box size="0.75 0.55 0.3"/>
+          <box size="0.75 0.55 0.37"/>
         </geometry>
       </collision>
     </link>
 
-    <!-- Fixed joint -->
     <joint name="base_link_joint" type="fixed">
       <parent link="base_link"/>
       <child link="hydrogen_frame"/>
@@ -55,19 +55,6 @@
       </sensor>
     </gazebo>
 
-    <!-- Absolute depth sensor (optional) -->
-    <!--
-    <gazebo reference="base_link">
-      <plugin
-        filename="libauv_absolute_depth.so"
-        name="auv_absolute_depth">
-        <reference_z>0.0</reference_z>
-        <topic>/altimeter</topic>
-      </plugin>
-    </gazebo>
-    -->
-
   </xacro:macro>
 
 </robot>
-
