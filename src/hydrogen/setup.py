@@ -51,6 +51,9 @@ setup(
         ('share/' + package_name + '/parameters', ['parameters/bridge_params.yaml']),
         # YOLO model
         ('share/' + package_name, ['hydrogen/prequal.pt']),
+        ('share/' + package_name, ['hydrogen/best.pt']),
+        ('share/' + package_name, ['hydrogen/MAIN_SIM_MODEL.pt']),
+        
     ],
     install_requires=['setuptools'],
     zip_safe=True,

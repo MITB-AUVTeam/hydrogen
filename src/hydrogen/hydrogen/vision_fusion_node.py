@@ -44,7 +44,7 @@ class VisionFusionNode(Node):
         self.declare_parameter('min_depth', 0.2)
         self.declare_parameter('max_depth', 20.0)
         self.declare_parameter('min_valid_pixels', 10)
-        self.declare_parameter('gate_conf', 0.8)
+        self.declare_parameter('gate_conf', 0.5)
 
         self.min_depth = self.get_parameter('min_depth').value
         self.max_depth = self.get_parameter('max_depth').value
@@ -57,7 +57,7 @@ class VisionFusionNode(Node):
 
         # Load YOLO Model for Gate
         package_share_directory = get_package_share_directory('hydrogen')
-        model_path = os.path.join(package_share_directory, 'prequal.pt')
+        model_path = os.path.join(package_share_directory, 'MAIN_SIM_MODEL.pt')
         self.model = YOLO(model_path)
         self.get_logger().info(f"YOLO model loaded for gate detection from {model_path}")
 
@@ -136,84 +136,131 @@ class VisionFusionNode(Node):
         cy = self.camera_info.k[5]
 
         # ── 2. Gate Detection (YOLO) ─────────────────────────────────────────
+        # ── 2. YOLO Detection (All Classes) ───────────────────────────────────────
         results = self.model(rgb_cv, verbose=False, show=False)
 
         if len(results) > 0:
             for box in results[0].boxes:
+
                 conf = float(box.conf[0].cpu().numpy())
                 cls = int(box.cls[0].cpu().numpy())
                 cls_name = self.model.names.get(cls, str(cls))
 
-                # We only want the gate from the model
-                if cls_name != "preq_gate" or conf < self.gate_conf:
+                # Optional confidence threshold
+                if conf < 0.25:
                     continue
 
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                
-                # Depth extraction
-                z = self.get_z_from_depth(depth_cv, int(x1), int(y1), int(x2), int(y2), is_pole=False)
-                if z is None: continue
 
-                # Back-projection to 3D
-                u_center, v_center = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+                # Get depth
+                z = self.get_z_from_depth(
+                    depth_cv,
+                    int(x1), int(y1),
+                    int(x2), int(y2),
+                    is_pole=False
+                )
+
+                if z is None:
+                    continue
+
+                # 3D position
+                u_center = (x1 + x2) / 2.0
+                v_center = (y1 + y2) / 2.0
+
                 x_3d = (u_center - cx) * z / fx
                 y_3d = (v_center - cy) * z / fy
 
-                # Add to output
-                self.add_detection_3d(out, "preq_gate", conf, x_3d, y_3d, z, (x2-x1), (y2-y1))
-                self.add_detection(det_array, "preq_gate", conf, x_3d, y_3d, z,
-                                    u_center, v_center, (x2-x1), (y2-y1), tracking_id)
+                # Publish using the detected class name
+                self.add_detection_3d(
+                    out,
+                    cls_name,
+                    conf,
+                    x_3d,
+                    y_3d,
+                    z,
+                    x2 - x1,
+                    y2 - y1
+                )
+
+                self.add_detection(
+                    det_array,
+                    cls_name,
+                    conf,
+                    x_3d,
+                    y_3d,
+                    z,
+                    u_center,
+                    v_center,
+                    x2 - x1,
+                    y2 - y1,
+                    tracking_id
+                )
+
                 tracking_id += 1
 
-                # Visualization
-                cv2.rectangle(rgb_cv, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                cv2.putText(rgb_cv, f"gate: {z:.2f}m", (int(x1), int(y1) - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                # Draw box
+                cv2.rectangle(
+                    rgb_cv,
+                    (int(x1), int(y1)),
+                    (int(x2), int(y2)),
+                    (0, 255, 0),
+                    2
+                )
 
-        # ── 3. Pole Detection (HSV - Red) ────────────────────────────────────
-        hsv = cv2.cvtColor(rgb_cv, cv2.COLOR_BGR2HSV)
-        mask1 = cv2.inRange(hsv, RED_HSV_LO1, RED_HSV_HI1)
-        mask2 = cv2.inRange(hsv, RED_HSV_LO2, RED_HSV_HI2)
-        mask = cv2.bitwise_or(mask1, mask2)
-        mask = cv2.dilate(mask, DILATE_KERNEL, iterations=DILATE_ITERS)
+                cv2.putText(
+                    rgb_cv,
+                    f"{cls_name} {conf:.2f} {z:.2f}m",
+                    (int(x1), max(20, int(y1) - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 255, 0),
+                    2
+                )
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # # ── 3. Pole Detection (HSV - Red) ────────────────────────────────────
+        # hsv = cv2.cvtColor(rgb_cv, cv2.COLOR_BGR2HSV)
+        # mask1 = cv2.inRange(hsv, RED_HSV_LO1, RED_HSV_HI1)
+        # mask2 = cv2.inRange(hsv, RED_HSV_LO2, RED_HSV_HI2)
+        # mask = cv2.bitwise_or(mask1, mask2)
+        # mask = cv2.dilate(mask, DILATE_KERNEL, iterations=DILATE_ITERS)
+
+        # contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Sort contours by area, largest first
-        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        # # Sort contours by area, largest first
+        # contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
-        for cnt in contours:
-            if cv2.contourArea(cnt) < MIN_CONTOUR_AREA:
-                continue
+        # for cnt in contours:
+        #     if cv2.contourArea(cnt) < MIN_CONTOUR_AREA:
+        #         continue
 
-            x, y, w, h = cv2.boundingRect(cnt)
+        #     x, y, w, h = cv2.boundingRect(cnt)
             
-            # Simple aspect ratio filter to ensure it's a vertical pole
-            if h / max(w, 1) < POLE_ASPECT_THRESHOLD:
-                continue
+        #     # Simple aspect ratio filter to ensure it's a vertical pole
+        #     if h / max(w, 1) < POLE_ASPECT_THRESHOLD:
+        #         continue
 
-            # Depth extraction
-            z = self.get_z_from_depth(depth_cv, x, y, x + w, y + h, is_pole=True)
-            if z is None: continue
+        #     # Depth extraction
+        #     z = self.get_z_from_depth(depth_cv, x, y, x + w, y + h, is_pole=True)
+        #     if z is None: continue
 
-            # Back-projection to 3D
-            u_center, v_center = x + w / 2.0, y + h / 2.0
-            x_3d = (u_center - cx) * z / fx
-            y_3d = (v_center - cy) * z / fy
+        #     # Back-projection to 3D
+        #     u_center, v_center = x + w / 2.0, y + h / 2.0
+        #     x_3d = (u_center - cx) * z / fx
+        #     y_3d = (v_center - cy) * z / fy
 
-            # Add to output
-            self.add_detection_3d(out, "preq_pole", 1.0, x_3d, y_3d, z, float(w), float(h))
-            self.add_detection(det_array, "preq_pole", 1.0, x_3d, y_3d, z,
-                                u_center, v_center, float(w), float(h), tracking_id)
-            tracking_id += 1
+        #     # Add to output
+        #     self.add_detection_3d(out, "preq_pole", 1.0, x_3d, y_3d, z, float(w), float(h))
+        #     self.add_detection(det_array, "preq_pole", 1.0, x_3d, y_3d, z,
+        #                         u_center, v_center, float(w), float(h), tracking_id)
+        #     tracking_id += 1
 
-            # Visualization
-            cv2.rectangle(rgb_cv, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            cv2.putText(rgb_cv, f"pole: {z:.2f}m", (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        #     # Visualization
+        #     cv2.rectangle(rgb_cv, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        #     cv2.putText(rgb_cv, f"pole: {z:.2f}m", (x, y - 10),
+        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             
-            # Only track the single largest valid pole to prevent jumping/flickering
-            break
+        #     # Only track the single largest valid pole to prevent jumping/flickering
+        #     break
 
         # 4. Final Publish and Visualise
         cv2.imshow("Vision Detections (Hybrid)", rgb_cv)

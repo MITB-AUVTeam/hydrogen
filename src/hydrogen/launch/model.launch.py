@@ -158,7 +158,7 @@ def generate_launch_description():
     # ---------------- Launch Description ----------------
     ld = LaunchDescription()
 
-    ld.add_action(DeclareLaunchArgument('x', default_value='-4.5', description='Spawn X position'))
+    ld.add_action(DeclareLaunchArgument('x', default_value='5.0', description='Spawn X position'))
     ld.add_action(DeclareLaunchArgument('y', default_value='-22.0', description='Spawn Y position'))
     ld.add_action(DeclareLaunchArgument('z', default_value='2.5', description='Spawn Z position'))
     ld.add_action(DeclareLaunchArgument('R', default_value='0.0', description='Spawn Roll'))
